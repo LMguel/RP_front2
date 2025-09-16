@@ -9,7 +9,6 @@ import {
   InputAdornment,
   IconButton,
   Link,
-  Alert,
   CircularProgress,
   Container,
 } from '@mui/material';
@@ -17,9 +16,8 @@ import {
   Visibility,
   VisibilityOff,
   Login as LoginIcon,
-  Business as BusinessIcon,
+  Person as PersonIcon,
   Lock as LockIcon,
-  Security as SecurityIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -85,7 +83,7 @@ const LoginForm: React.FC = () => {
       sx={{
         minHeight: '100vh',
         width: '100vw',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -95,16 +93,7 @@ const LoginForm: React.FC = () => {
         right: 0,
         bottom: 0,
         overflow: 'auto',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: `url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><pattern id='grain' width='100' height='100' patternUnits='userSpaceOnUse'><circle cx='25' cy='25' r='1' fill='white' opacity='0.1'/><circle cx='75' cy='75' r='0.5' fill='white' opacity='0.1'/><circle cx='50' cy='10' r='0.8' fill='white' opacity='0.1'/></pattern></defs><rect width='100%25' height='100%25' fill='url(%23grain)'/></svg>")`,
-          pointerEvents: 'none',
-        }
+
       }}
     >
       <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 1, py: 4 }}>
@@ -115,65 +104,62 @@ const LoginForm: React.FC = () => {
         >
           <Card
             sx={{
-              background: 'rgba(255, 255, 255, 0.95)',
+              background: 'rgba(255, 255, 255, 0.05)',
               backdropFilter: 'blur(20px)',
-              borderRadius: '24px',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-5px)',
-                boxShadow: '0 30px 80px rgba(0, 0, 0, 0.2)',
-              },
-              maxWidth: 420,
+              borderRadius: '16px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              maxWidth: 400,
               mx: 'auto',
             }}
           >
-            <CardContent sx={{ p: { xs: 4, sm: 6 }, textAlign: 'center' }}>
+            <CardContent sx={{ p: { xs: 4, sm: 5 }, textAlign: 'center' }}>
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.12, duration: 0.36 }}
-                style={{ marginBottom: 40 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+                style={{ marginBottom: 48 }}
               >
                 <Box
                   sx={{
-                    display: 'inline-flex',
+                    display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    width: 64,
-                    height: 64,
-                    borderRadius: 2,
-                    background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                    mb: 2.5,
-                    boxShadow: '0 8px 32px rgba(79, 70, 229, 0.3)',
-                    transition: 'transform 0.3s ease',
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                    }
+                    mb: 3,
                   }}
                 >
-                  <BusinessIcon sx={{ color: 'white', fontSize: 32 }} />
+                  <Box
+                    sx={{
+                      width: 150, // Aumentado de 120 para 150
+                      height: 150, // Aumentado de 120 para 150
+                      backgroundColor: 'white',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <img 
+                      src="/src/image/logo.png" 
+                      alt="RP Logo"
+                      style={{
+                        width: '200%', // Aumentado de 80% para 90%
+                        height: '200%', // Aumentado de 80% para 90%
+                        objectFit: 'contain',
+                      }}
+                    />
+                  </Box>
                 </Box>
 
                 <Typography 
-                  variant="h4" 
+                  variant="h5" 
                   sx={{ 
-                    fontWeight: 700, 
-                    color: '#1a1a1a', 
+                    fontWeight: 400, 
+                    color: 'rgba(255, 255, 255, 0.9)', 
                     mb: 1,
-                    letterSpacing: '-0.5px',
-                    fontSize: { xs: '1.75rem', sm: '2rem' }
-                  }}
-                >
-                  REGISTRA.PONTO
-                </Typography>
-                <Typography 
-                  variant="body1" 
-                  sx={{ 
-                    color: '#6b7280',
-                    fontWeight: 400,
-                    fontSize: '15px'
+                    letterSpacing: '0.5px',
+                    fontSize: '18px'
                   }}
                 >
                   Sistema de Controle de Ponto Eletrônico
@@ -181,23 +167,11 @@ const LoginForm: React.FC = () => {
               </motion.div>
 
               <form onSubmit={handleSubmit}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
                   <Box>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        fontWeight: 500, 
-                        color: '#374151', 
-                        mb: 1, 
-                        textAlign: 'left',
-                        fontSize: '14px'
-                      }}
-                    >
-                      ID do Usuário
-                    </Typography>
                     <TextField
                       fullWidth
-                      placeholder="Digite seu ID de usuário"
+                      placeholder="ID do Usuário"
                       name="usuario_id"
                       value={formData.usuario_id}
                       onChange={handleChange}
@@ -209,53 +183,44 @@ const LoginForm: React.FC = () => {
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
-                            <BusinessIcon sx={{ color: '#6b7280' }} />
+                            <PersonIcon sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 20 }} />
                           </InputAdornment>
                         ),
                         sx: {
+                          color: 'white',
                           fontSize: '16px',
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderWidth: '2px',
-                            borderColor: '#e5e7eb',
-                            borderRadius: '12px',
+                            borderWidth: '1px',
+                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                            borderRadius: '8px',
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#d1d5db',
+                            borderColor: 'rgba(255, 255, 255, 0.5)',
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#4f46e5',
-                            boxShadow: '0 0 0 4px rgba(79, 70, 229, 0.1)',
+                            borderColor: 'rgba(255, 255, 255, 0.7)',
                           },
                           '& input': {
-                            padding: '16px 14px 16px 0',
+                            padding: '14px 12px 14px 0',
+                            color: 'white',
                           },
                           '& input::placeholder': {
-                            color: '#9ca3af',
+                            color: 'rgba(255, 255, 255, 0.6)',
                             opacity: 1,
                           },
-                          background: 'white',
-                          transition: 'all 0.3s ease',
+                          background: 'rgba(255, 255, 255, 0.05)',
                         }
+                      }}
+                      FormHelperTextProps={{
+                        sx: { color: '#ef4444' }
                       }}
                     />
                   </Box>
 
                   <Box>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        fontWeight: 500, 
-                        color: '#374151', 
-                        mb: 1, 
-                        textAlign: 'left',
-                        fontSize: '14px'
-                      }}
-                    >
-                      Senha
-                    </Typography>
                     <TextField
                       fullWidth
-                      placeholder="Digite sua senha"
+                      placeholder="Senha"
                       name="senha"
                       type={showPassword ? 'text' : 'password'}
                       value={formData.senha}
@@ -268,7 +233,7 @@ const LoginForm: React.FC = () => {
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
-                            <LockIcon sx={{ color: '#6b7280' }} />
+                            <LockIcon sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 20 }} />
                           </InputAdornment>
                         ),
                         endAdornment: (
@@ -279,9 +244,9 @@ const LoginForm: React.FC = () => {
                               disabled={isLoading}
                               aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                               sx={{
-                                color: '#6b7280',
+                                color: 'rgba(255, 255, 255, 0.7)',
                                 '&:hover': {
-                                  color: '#4f46e5',
+                                  color: 'rgba(255, 255, 255, 0.9)',
                                 }
                               }}
                             >
@@ -290,45 +255,48 @@ const LoginForm: React.FC = () => {
                           </InputAdornment>
                         ),
                         sx: {
+                          color: 'white',
                           fontSize: '16px',
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderWidth: '2px',
-                            borderColor: '#e5e7eb',
-                            borderRadius: '12px',
+                            borderWidth: '1px',
+                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                            borderRadius: '8px',
                           },
                           '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#d1d5db',
+                            borderColor: 'rgba(255, 255, 255, 0.5)',
                           },
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#4f46e5',
-                            boxShadow: '0 0 0 4px rgba(79, 70, 229, 0.1)',
+                            borderColor: 'rgba(255, 255, 255, 0.7)',
                           },
                           '& input': {
-                            padding: '16px 14px 16px 0',
+                            padding: '14px 12px 14px 0',
+                            color: 'white',
                           },
                           '& input::placeholder': {
-                            color: '#9ca3af',
+                            color: 'rgba(255, 255, 255, 0.6)',
                             opacity: 1,
                           },
-                          background: 'white',
-                          transition: 'all 0.3s ease',
+                          background: 'rgba(255, 255, 255, 0.05)',
                         }
+                      }}
+                      FormHelperTextProps={{
+                        sx: { color: '#ef4444' }
                       }}
                     />
                   </Box>
                 </Box>
 
-                <Box sx={{ textAlign: 'right', mt: 2, mb: 4 }}>
+                <Box sx={{ textAlign: 'center', mt: 3, mb: 4 }}>
                   <Link
                     component={RouterLink}
                     to="/forgot-password"
                     underline="hover"
                     sx={{ 
-                      color: '#4f46e5', 
+                      color: 'rgba(255, 255, 255, 0.8)', 
                       fontSize: '14px',
-                      fontWeight: 500,
+                      fontWeight: 400,
                       '&:hover': {
-                        color: '#3730a3',
+                        color: 'white',
                       }
                     }}
                   >
@@ -345,80 +313,41 @@ const LoginForm: React.FC = () => {
                   startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <LoginIcon />}
                   sx={{ 
                     py: 2, 
-                    borderRadius: '12px', 
-                    background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                    boxShadow: '0 8px 32px rgba(79, 70, 229, 0.3)',
+                    borderRadius: '8px', 
+                    background: '#2563eb',
                     fontSize: '16px',
                     fontWeight: 600,
                     textTransform: 'none',
-                    position: 'relative',
-                    overflow: 'hidden',
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 12px 40px rgba(79, 70, 229, 0.4)',
-                      background: 'linear-gradient(135deg, #4338ca 0%, #7c3aed 100%)',
-                    },
-                    '&:active': {
-                      transform: 'translateY(0)',
+                      background: '#1d4ed8',
                     },
                     '&:disabled': {
-                      background: 'linear-gradient(135deg, #9ca3af 0%, #9ca3af 100%)',
-                      transform: 'none',
+                      background: 'rgba(255, 255, 255, 0.1)',
                     },
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      top: 0,
-                      left: '-100%',
-                      width: '100%',
-                      height: '100%',
-                      background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
-                      transition: 'left 0.5s ease',
-                    },
-                    '&:hover::before': {
-                      left: '100%',
-                    }
                   }}
                 >
                   {isLoading ? 'Entrando...' : 'Entrar'}
                 </Button>
               </form>
 
-              <Box sx={{ textAlign: 'center', mt: 4, mb: 3 }}>
-                <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '14px' }}>
+              <Box sx={{ textAlign: 'center', mt: 4 }}>
+                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px' }}>
                   Não tem uma conta?{' '}
                   <Link
                     component={RouterLink}
                     to="/register"
                     sx={{ 
-                      color: '#4f46e5', 
+                      color: 'white', 
                       fontWeight: 600, 
                       textDecoration: 'none',
                       '&:hover': {
-                        color: '#3730a3',
                         textDecoration: 'underline',
                       }
                     }}
                   >
                     Cadastre-se aqui
                   </Link>
-                </Typography>
-              </Box>
-
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: 1,
-                  color: '#6b7280',
-                  fontSize: '12px'
-                }}
-              >
-                <SecurityIcon sx={{ fontSize: 16, color: '#10b981' }} />
-                <Typography variant="caption" sx={{ color: '#6b7280' }}>
-                  Conexão segura e criptografada
                 </Typography>
               </Box>
             </CardContent>
