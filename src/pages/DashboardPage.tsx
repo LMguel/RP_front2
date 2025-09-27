@@ -6,14 +6,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
   CircularProgress,
   Alert,
 } from '@mui/material';
@@ -23,32 +15,19 @@ import {
   TrendingUp as TrendingUpIcon,
   Business as BusinessIcon,
 } from '@mui/icons-material';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
-import { TimeRecord, HoursWorked } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     total_funcionarios: 0,
     total_registros_mes: 0,
-    funcionarios_ativos: 0,
+    funcionarios_registrados_hoje: 0,
   });
-  const [recentRecords, setRecentRecords] = useState<TimeRecord[]>([]);
-  const [hoursData, setHoursData] = useState<HoursWorked[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,24 +48,80 @@ const DashboardPage: React.FC = () => {
       const recordsResponse = await apiService.getTimeRecords();
       const records = Array.isArray(recordsResponse) ? recordsResponse : [];
       
-      // Calculate monthly records
-      const currentMonth = new Date().toISOString().slice(0, 7);
-      const monthlyRecords = records.filter(record => 
-        record.data_hora && record.data_hora.startsWith(currentMonth)
-      );
+      // Se não há registros com data, vamos considerar todos os registros como válidos
+      const recordsWithoutDate = records.filter(r => !r.data_hora).length;
+      const recordsWithDate = records.filter(r => r.data_hora).length;
+      
+      // Get current date in Brazil timezone
+      const now = new Date();
+      const brasiliaTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+      
+      // Also try getting today's date from a simple Date() for comparison
+      const simpleToday = new Date();
+      const simpleDateStr = simpleToday.toISOString().split('T')[0]; // Format: "2025-09-26"
+      
+      const currentYear = brasiliaTime.getFullYear();
+      const currentMonth = brasiliaTime.getMonth() + 1; // getMonth() returns 0-11
+      const currentDay = brasiliaTime.getDate();
+      
+      const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+      const currentDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
 
-      // Load hours worked data
-      const hoursResponse = await apiService.getTimeRecords();
-      const hoursData = Array.isArray(hoursResponse) ? hoursResponse : [];
+      let monthlyRecords, todayRecords;
+
+      if (recordsWithoutDate > recordsWithDate) {
+        // Se a maioria dos registros não tem data, considerar todos como válidos
+        monthlyRecords = records;
+        todayRecords = records;
+      } else {
+        // Lógica normal de filtragem por data
+        monthlyRecords = records.filter(record => {
+          if (!record.data_hora) return false;
+          
+          let recordDate = '';
+          
+          // Handle different date formats
+          if (record.data_hora.includes(' ')) {
+            recordDate = record.data_hora.split(' ')[0];
+          } else if (record.data_hora.includes('T')) {
+            recordDate = record.data_hora.split('T')[0];
+          } else {
+            recordDate = record.data_hora;
+          }
+          
+          return recordDate && recordDate.startsWith(currentMonthStr);
+        });
+
+        todayRecords = records.filter(record => {
+          if (!record.data_hora) return false;
+          
+          let recordDate = '';
+          
+          if (record.data_hora.includes(' ')) {
+            recordDate = record.data_hora.split(' ')[0];
+          } else if (record.data_hora.includes('T')) {
+            recordDate = record.data_hora.split('T')[0];
+          } else {
+            recordDate = record.data_hora;
+          }
+          
+          const matchesBrasil = recordDate === currentDateStr;
+          const matchesSimple = recordDate === simpleDateStr;
+          
+          return matchesBrasil || matchesSimple;
+        });
+      }
+      
+      // Get unique employees who registered today
+      const uniqueEmployeeIds = [...new Set(todayRecords.map(record => record.funcionario_id || record.funcionario_nome))].filter(id => id);
+      const uniqueEmployeesToday = uniqueEmployeeIds.length;
 
       setStats({
         total_funcionarios: totalEmployees,
         total_registros_mes: monthlyRecords.length,
-        funcionarios_ativos: totalEmployees, // Simplified for now
+        funcionarios_registrados_hoje: uniqueEmployeesToday,
       });
 
-      setRecentRecords(records.slice(0, 10));
-      setHoursData(hoursData);
     } catch (err: any) {
       console.error('Error loading dashboard data:', err);
       setError('Erro ao carregar dados do dashboard');
@@ -95,45 +130,17 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const formatTime = (timeString: string) => {
-    try {
-      const [date, time] = timeString.split(' ');
-      return time || timeString;
-    } catch {
-      return timeString;
-    }
+  const handleNavigateToTodayRecords = () => {
+    // Navigate to records page 
+    // If most records don't have dates, don't filter by date
+    navigate('/records?tab=detailed');
   };
-
-  const formatDate = (dateString: string) => {
-    try {
-      const [date, time] = dateString.split(' ');
-      return date || dateString;
-    } catch {
-      return dateString;
-    }
-  };
-
-  const getStatusColor = (tipo: string) => {
-    return tipo === 'entrada' ? 'success' : 'error';
-  };
-
-  const getStatusText = (tipo: string) => {
-    return tipo === 'entrada' ? 'Entrada' : 'Saída';
-  };
-
-  // Prepare chart data
-  const chartData = hoursData.slice(0, 5).map(item => ({
-    name: item.funcionario,
-    horas: parseFloat(item.horas_trabalhadas.split(':')[0]) || 0,
-  }));
-
-  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
   if (loading) {
     return (
       <PageLayout>
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-          <CircularProgress />
+          <CircularProgress sx={{ color: 'white' }} />
         </Box>
       </PageLayout>
     );
@@ -142,7 +149,16 @@ const DashboardPage: React.FC = () => {
   if (error) {
     return (
       <PageLayout>
-        <Alert severity="error" className="mb-4">
+        <Alert 
+          severity="error" 
+          sx={{ 
+            mb: 4,
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+        >
           {error}
         </Alert>
       </PageLayout>
@@ -151,41 +167,78 @@ const DashboardPage: React.FC = () => {
 
   return (
     <PageLayout>
-      <Box className="space-y-6">
       {/* Welcome Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <Typography variant="h4" className="font-bold text-gray-800 mb-2">
-          Bem-vindo, {user?.empresa_nome}!
-        </Typography>
-        <Typography variant="body1" className="text-gray-600">
-          Aqui está um resumo das atividades da sua empresa
-        </Typography>
+        <Box sx={{ mb: 4 }}>
+          <Typography 
+            variant="h4" 
+            sx={{ 
+              fontWeight: 600, 
+              color: 'white', 
+              mb: 1,
+              fontSize: '28px'
+            }}
+          >
+            Bem-vindo, {user?.empresa_nome}!
+          </Typography>
+          <Typography 
+            variant="body1" 
+            sx={{ 
+              color: 'rgba(255, 255, 255, 0.8)',
+              fontSize: '16px'
+            }}
+          >
+            Aqui está um resumo das atividades da sua empresa
+          </Typography>
+        </Box>
       </motion.div>
 
       {/* Stats Cards */}
-      <Grid container spacing={3}>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <Card className="h-full">
+            <Card 
+              sx={{
+                height: '100%',
+                background: 'rgba(255, 255, 255, 0.08)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: '16px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }}
+            >
               <CardContent>
-                <Box className="flex items-center justify-between">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Box>
-                    <Typography color="textSecondary" gutterBottom variant="h6">
+                    <Typography 
+                      sx={{ 
+                        color: 'rgba(255, 255, 255, 0.8)', 
+                        fontSize: '14px',
+                        mb: 1
+                      }}
+                    >
                       Funcionários
                     </Typography>
-                    <Typography variant="h4" className="font-bold text-blue-600">
+                    <Typography 
+                      variant="h4" 
+                      sx={{ 
+                        fontWeight: 600, 
+                        color: '#3b82f6',
+                        fontSize: '32px'
+                      }}
+                    >
                       {stats.total_funcionarios}
                     </Typography>
                   </Box>
-                  <PeopleIcon className="text-blue-600 text-4xl" />
+                  <PeopleIcon sx={{ color: '#3b82f6', fontSize: '32px' }} />
                 </Box>
               </CardContent>
             </Card>
@@ -198,18 +251,40 @@ const DashboardPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <Card className="h-full">
+            <Card 
+              sx={{
+                height: '100%',
+                background: 'rgba(255, 255, 255, 0.08)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: '16px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }}
+            >
               <CardContent>
-                <Box className="flex items-center justify-between">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Box>
-                    <Typography color="textSecondary" gutterBottom variant="h6">
+                    <Typography 
+                      sx={{ 
+                        color: 'rgba(255, 255, 255, 0.8)', 
+                        fontSize: '14px',
+                        mb: 1
+                      }}
+                    >
                       Registros (Mês)
                     </Typography>
-                    <Typography variant="h4" className="font-bold text-green-600">
+                    <Typography 
+                      variant="h4" 
+                      sx={{ 
+                        fontWeight: 600, 
+                        color: '#10b981',
+                        fontSize: '32px'
+                      }}
+                    >
                       {stats.total_registros_mes}
                     </Typography>
                   </Box>
-                  <AccessTimeIcon className="text-green-600 text-4xl" />
+                  <AccessTimeIcon sx={{ color: '#10b981', fontSize: '32px' }} />
                 </Box>
               </CardContent>
             </Card>
@@ -222,18 +297,48 @@ const DashboardPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
-            <Card className="h-full">
+            <Card 
+              sx={{
+                height: '100%',
+                background: 'rgba(255, 255, 255, 0.08)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: '16px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 12px 40px rgba(0, 0, 0, 0.3)',
+                  background: 'rgba(255, 255, 255, 0.12)',
+                },
+              }}
+              onClick={handleNavigateToTodayRecords}
+            >
               <CardContent>
-                <Box className="flex items-center justify-between">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Box>
-                    <Typography color="textSecondary" gutterBottom variant="h6">
-                      Ativos Hoje
+                    <Typography 
+                      sx={{ 
+                        color: 'rgba(255, 255, 255, 0.8)', 
+                        fontSize: '14px',
+                        mb: 1
+                      }}
+                    >
+                      Registraram Hoje
                     </Typography>
-                    <Typography variant="h4" className="font-bold text-purple-600">
-                      {stats.funcionarios_ativos}
+                    <Typography 
+                      variant="h4" 
+                      sx={{ 
+                        fontWeight: 600, 
+                        color: '#8b5cf6',
+                        fontSize: '32px'
+                      }}
+                    >
+                      {stats.funcionarios_registrados_hoje}/{stats.total_funcionarios}
                     </Typography>
                   </Box>
-                  <TrendingUpIcon className="text-purple-600 text-4xl" />
+                  <TrendingUpIcon sx={{ color: '#8b5cf6', fontSize: '32px' }} />
                 </Box>
               </CardContent>
             </Card>
@@ -246,144 +351,46 @@ const DashboardPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
           >
-            <Card className="h-full">
+            <Card 
+              sx={{
+                height: '100%',
+                background: 'rgba(255, 255, 255, 0.08)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: '16px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }}
+            >
               <CardContent>
-                <Box className="flex items-center justify-between">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Box>
-                    <Typography color="textSecondary" gutterBottom variant="h6">
+                    <Typography 
+                      sx={{ 
+                        color: 'rgba(255, 255, 255, 0.8)', 
+                        fontSize: '14px',
+                        mb: 1
+                      }}
+                    >
                       Empresa
                     </Typography>
-                    <Typography variant="h4" className="font-bold text-orange-600">
+                    <Typography 
+                      variant="h4" 
+                      sx={{ 
+                        fontWeight: 600, 
+                        color: '#f59e0b',
+                        fontSize: '32px'
+                      }}
+                    >
                       {user?.empresa_nome?.slice(0, 3).toUpperCase()}
                     </Typography>
                   </Box>
-                  <BusinessIcon className="text-orange-600 text-4xl" />
+                  <BusinessIcon sx={{ color: '#f59e0b', fontSize: '32px' }} />
                 </Box>
               </CardContent>
             </Card>
           </motion.div>
         </Grid>
       </Grid>
-
-      {/* Charts Section */}
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 8 }}>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-          >
-            <Card>
-              <CardContent>
-                <Typography variant="h6" className="font-semibold mb-4">
-                  Horas Trabalhadas por Funcionário
-                </Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="horas" fill="#3b82f6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 4 }}>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
-          >
-            <Card>
-              <CardContent>
-                <Typography variant="h6" className="font-semibold mb-4">
-                  Distribuição de Registros
-                </Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: 'Entradas', value: recentRecords.filter(r => r.tipo === 'entrada').length },
-                        { name: 'Saídas', value: recentRecords.filter(r => r.tipo === 'saída').length },
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {[0, 1].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Grid>
-      </Grid>
-
-      {/* Recent Records Table */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.7 }}
-      >
-        <Card>
-          <CardContent>
-            <Typography variant="h6" className="font-semibold mb-4">
-              Registros Recentes
-            </Typography>
-            <TableContainer component={Paper} variant="outlined">
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Funcionário</TableCell>
-                    <TableCell>Data</TableCell>
-                    <TableCell>Hora</TableCell>
-                    <TableCell>Status</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {recentRecords.length > 0 ? (
-                    recentRecords.map((record) => (
-                      <TableRow key={record.registro_id}>
-                        <TableCell>{record.funcionario_nome || 'N/A'}</TableCell>
-                        <TableCell>{formatDate(record.data_hora)}</TableCell>
-                        <TableCell>{formatTime(record.data_hora)}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={getStatusText(record.tipo)}
-                            color={getStatusColor(record.tipo) as any}
-                            size="small"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={4} align="center">
-                        <Typography variant="body2" color="textSecondary">
-                          Nenhum registro encontrado
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </Box>
     </PageLayout>
   );
 };

@@ -184,7 +184,7 @@ const EmployeesPage: React.FC = () => {
     return (
       <PageLayout>
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-          <CircularProgress />
+          <CircularProgress sx={{ color: 'white' }} />
         </Box>
       </PageLayout>
     );
@@ -192,34 +192,72 @@ const EmployeesPage: React.FC = () => {
 
   return (
     <PageLayout>
-      <Box className="space-y-6">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-      >
-        <Box>
-          <Typography variant="h4" className="font-bold text-gray-800 mb-2">
-            Funcionários
-          </Typography>
-          <Typography variant="body1" className="text-gray-600">
-            Gerencie os funcionários da sua empresa
-          </Typography>
-        </Box>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' },
+        alignItems: { sm: 'center' },
+        justifyContent: 'space-between',
+        gap: 2,
+        mb: 4
+      }}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Box>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: 600, 
+                color: 'white', 
+                mb: 1,
+                fontSize: '28px'
+              }}
+            >
+              Funcionários
+            </Typography>
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                color: 'rgba(255, 255, 255, 0.8)',
+                fontSize: '16px'
+              }}
+            >
+              Gerencie os funcionários da sua empresa
+            </Typography>
+          </Box>
+        </motion.div>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => setFormOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700"
+          sx={{
+            background: '#3b82f6',
+            '&:hover': {
+              background: '#2563eb',
+            },
+            fontWeight: 600,
+            textTransform: 'none',
+            mt: { xs: 2, sm: 0 }
+          }}
         >
           Cadastrar Funcionário
         </Button>
-      </motion.div>
+      </Box>
 
       {error && (
-        <Alert severity="error" className="mb-4">
+        <Alert 
+          severity="error" 
+          sx={{ 
+            mb: 4,
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+        >
           {error}
         </Alert>
       )}
@@ -230,7 +268,16 @@ const EmployeesPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        <Card>
+        <Card 
+          sx={{
+            background: 'rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            mb: 4
+          }}
+        >
           <CardContent>
             <TextField
               fullWidth
@@ -240,9 +287,26 @@ const EmployeesPage: React.FC = () => {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon className="text-gray-400" />
+                    <SearchIcon sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
                   </InputAdornment>
                 ),
+                sx: {
+                  color: 'white',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255, 255, 255, 0.5)',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255, 255, 255, 0.7)',
+                  },
+                  '& input::placeholder': {
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    opacity: 1,
+                  },
+                  background: 'rgba(255, 255, 255, 0.05)',
+                }
               }}
               variant="outlined"
             />
@@ -256,53 +320,90 @@ const EmployeesPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-        <Card>
+        <Card 
+          sx={{
+            background: 'rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+        >
           <CardContent>
-            <Typography variant="h6" className="font-semibold mb-4">
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 600, 
+                mb: 3,
+                color: 'white',
+                fontSize: '18px'
+              }}
+            >
               Lista de Funcionários ({filteredEmployees.length})
             </Typography>
             
-            <TableContainer component={Paper} variant="outlined">
+            <TableContainer 
+              component={Paper} 
+              variant="outlined"
+              sx={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }}
+            >
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Funcionário</TableCell>
-                    <TableCell>Cargo</TableCell>
-                    <TableCell>Data de Cadastro</TableCell>
-                    <TableCell align="center">Ações</TableCell>
+                    <TableCell sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+                      Funcionário
+                    </TableCell>
+                    <TableCell sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+                      Cargo
+                    </TableCell>
+                    <TableCell sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+                      Data de Cadastro
+                    </TableCell>
+                    <TableCell align="center" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+                      Ações
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredEmployees.length > 0 ? (
                     filteredEmployees.map((employee) => (
                       <TableRow key={employee.id} hover>
-                        <TableCell>
-                          <Box className="flex items-center gap-3">
+                        <TableCell sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Avatar
                               src={employee.foto_url}
                               alt={employee.nome}
-                              className="w-10 h-10"
+                              sx={{ width: 40, height: 40 }}
                             >
                               <PersonIcon />
                             </Avatar>
                             <Box>
-                              <Typography variant="body2" className="font-medium">
+                              <Typography variant="body2" sx={{ fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)' }}>
                                 {employee.nome}
                               </Typography>
-                              <Typography variant="caption" className="text-gray-500">
+                              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
                                 ID: {employee.id}
                               </Typography>
                             </Box>
                           </Box>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
                           <Chip
                             label={employee.cargo}
                             size="small"
-                            className="bg-blue-50 text-blue-700"
+                            sx={{ 
+                              background: 'rgba(59, 130, 246, 0.2)',
+                              color: '#3b82f6',
+                              border: '1px solid rgba(59, 130, 246, 0.3)'
+                            }}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
                           <Typography variant="body2">
                             {formatDate(employee.data_cadastro)}
                           </Typography>
@@ -311,6 +412,7 @@ const EmployeesPage: React.FC = () => {
                           <IconButton
                             onClick={(e) => handleMenuOpen(e, employee)}
                             size="small"
+                            sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
                           >
                             <MoreVertIcon />
                           </IconButton>
@@ -319,13 +421,17 @@ const EmployeesPage: React.FC = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} align="center">
-                        <Box className="py-8">
-                          <PersonIcon className="text-gray-400 text-6xl mb-4" />
-                          <Typography variant="h6" className="text-gray-500 mb-2">
+                      <TableCell 
+                        colSpan={4} 
+                        align="center"
+                        sx={{ color: 'rgba(255, 255, 255, 0.6)' }}
+                      >
+                        <Box sx={{ py: 8 }}>
+                          <PersonIcon sx={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '4rem', mb: 2 }} />
+                          <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 1 }}>
                             {searchTerm ? 'Nenhum funcionário encontrado' : 'Nenhum funcionário cadastrado'}
                           </Typography>
-                          <Typography variant="body2" className="text-gray-400">
+                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.4)' }}>
                             {searchTerm 
                               ? 'Tente ajustar os termos de busca'
                               : 'Comece cadastrando seu primeiro funcionário'
@@ -361,7 +467,13 @@ const EmployeesPage: React.FC = () => {
         open={Boolean(menuAnchor)}
         onClose={handleMenuClose}
         PaperProps={{
-          sx: { borderRadius: 2 }
+          sx: { 
+            borderRadius: 2,
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+          }
         }}
       >
         <MenuItem onClick={handleEdit}>
@@ -370,9 +482,9 @@ const EmployeesPage: React.FC = () => {
           </ListItemIcon>
           <ListItemText>Editar</ListItemText>
         </MenuItem>
-        <MenuItem onClick={handleDelete} className="text-red-600">
+        <MenuItem onClick={handleDelete} sx={{ color: '#ef4444' }}>
           <ListItemIcon>
-            <DeleteIcon fontSize="small" className="text-red-600" />
+            <DeleteIcon fontSize="small" sx={{ color: '#ef4444' }} />
           </ListItemIcon>
           <ListItemText>Excluir</ListItemText>
         </MenuItem>
@@ -383,11 +495,17 @@ const EmployeesPage: React.FC = () => {
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
         PaperProps={{
-          sx: { borderRadius: 2 }
+          sx: { 
+            borderRadius: 2,
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+          }
         }}
       >
         <DialogTitle>
-          <Typography variant="h6" className="font-semibold">
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Confirmar Exclusão
           </Typography>
         </DialogTitle>
@@ -396,7 +514,7 @@ const EmployeesPage: React.FC = () => {
             Tem certeza que deseja excluir o funcionário{' '}
             <strong>{employeeToDelete?.nome}</strong>?
           </Typography>
-          <Typography variant="body2" className="text-red-600 mt-2">
+          <Typography variant="body2" sx={{ color: '#ef4444', mt: 2 }}>
             Esta ação não pode ser desfeita.
           </Typography>
         </DialogContent>
@@ -404,7 +522,7 @@ const EmployeesPage: React.FC = () => {
           <Button
             onClick={() => setDeleteDialogOpen(false)}
             disabled={submitting}
-            className="text-gray-600"
+            sx={{ color: '#6b7280' }}
           >
             Cancelar
           </Button>
@@ -419,7 +537,6 @@ const EmployeesPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
     </PageLayout>
   );
 };

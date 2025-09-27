@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageLayout from '../sections/PageLayout';
+import EmployeeSearch from '../components/EmployeeSearch';
+import RecordsTabs from '../components/RecordsTabs';
+import RecordsFilters from '../components/RecordsFilters';
+import TimeRecordForm from '../components/TimeRecordForm';
 import {
   Box,
-  Card,
-  CardContent,
   Typography,
   Button,
-  TextField,
-  InputAdornment,
+  Card,
+  CardContent,
   Table,
   TableBody,
   TableCell,
@@ -15,40 +18,27 @@ import {
   TableHead,
   TableRow,
   Paper,
-  IconButton,
   Chip,
+  IconButton,
+  CircularProgress,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress,
-  Alert,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Grid,
-  Autocomplete,
   Snackbar,
-  Tabs,
-  Tab,
+  Alert,
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Search as SearchIcon,
+  FileDownload as FileDownloadIcon,
   Delete as DeleteIcon,
   AccessTime as AccessTimeIcon,
-  GetApp as GetAppIcon,
-  FilterList as FilterListIcon,
-  FileDownload as FileDownloadIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { toast } from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
 import { TimeRecord, Employee } from '../types';
-import TimeRecordForm from '../components/TimeRecordForm';
-import * as XLSX from 'xlsx';
 
 interface EmployeeSummary {
   funcionario_id: string;
@@ -56,41 +46,48 @@ interface EmployeeSummary {
   funcionario_nome: string;
   horas_trabalhadas: number;
   total_horas: number;
-  dias?: {
-    [date: string]: Array<{
-      hora: string;
-      tipo: string;
-    }>;
-  };
 }
 
 const RecordsPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Estados principais
   const [tabValue, setTabValue] = useState(0); // 0 = Resumo, 1 = Detalhado
   const [employeeSummaries, setEmployeeSummaries] = useState<EmployeeSummary[]>([]);
-  const [selectedEmployeeRecords, setSelectedEmployeeRecords] = useState<TimeRecord[]>([]);
-  const [selectedEmployeeName, setSelectedEmployeeName] = useState('');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [records, setRecords] = useState<TimeRecord[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<TimeRecord[]>([]);
-  const [selectedEmployee, setSelectedEmployee] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Estados para busca de funcionários
+  const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
+  const [showEmployeeSuggestions, setShowEmployeeSuggestions] = useState(false);
+  const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
+  
+  // Estados para filtros
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [nome, setNome] = useState('');
+  const [opcoesNomes, setOpcoesNomes] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedEmployeeFilter, setSelectedEmployeeFilter] = useState('');
+  
+  // Estados para dialogs
   const [formOpen, setFormOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<TimeRecord | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [nome, setNome] = useState('');
-  const [opcoesNomes, setOpcoesNomes] = useState<string[]>([]);
+  
+  // Estados para snackbar
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('success');
 
-  const buscarRegistros = React.useCallback(async () => {
-    // Validação de datas
+  // Função para buscar registros
+  const buscarRegistros = useCallback(async () => {
     if (dateFrom && dateTo && dateFrom > dateTo) {
       setError('A data de início não pode ser maior que a data de fim.');
       setEmployeeSummaries([]);
@@ -111,16 +108,14 @@ const RecordsPage: React.FC = () => {
       if (dateFrom) params.inicio = dateFrom;
       if (dateTo) params.fim = dateTo;
       if (nome) params.nome = nome;
-      if (selectedEmployee) params.funcionario_id = selectedEmployee;
+      if (selectedEmployeeFilter) params.funcionario_id = selectedEmployeeFilter;
 
       const response = await apiService.getTimeRecords(params);
       
       if (tabValue === 0) {
-        // Resumo - agrupar por funcionário
         const summaries = Array.isArray(response) ? response : [];
         setEmployeeSummaries(summaries);
       } else {
-        // Detalhado
         const records = Array.isArray(response) ? response : [];
         setRecords(records);
         setFilteredRecords(records);
@@ -132,70 +127,69 @@ const RecordsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo, nome, selectedEmployee, tabValue]);
+  }, [dateFrom, dateTo, nome, selectedEmployeeFilter, tabValue]);
 
-  const buscarNomes = async (nomeParcial: string) => {
+  // Busca de nomes para autocomplete
+  const buscarNomes = async (termo: string) => {
     try {
       const response = await apiService.getEmployees();
-      const employeesList = response.funcionarios || [];
-      const nomesFiltrados = employeesList
-        .filter((emp: Employee) => emp.nome.toLowerCase().includes(nomeParcial.toLowerCase()))
-        .map((emp: Employee) => emp.nome);
-      setOpcoesNomes(nomesFiltrados);
+      const funcionarios = response.funcionarios || [];
+      const nomes = funcionarios
+        .filter((emp: Employee) => emp.nome.toLowerCase().includes(termo.toLowerCase()))
+        .map((emp: Employee) => emp.nome)
+        .slice(0, 10);
+      setOpcoesNomes(nomes);
     } catch (err) {
       console.error('Erro ao buscar nomes:', err);
     }
   };
 
-  useEffect(() => {
-    buscarRegistros();
-  }, [buscarRegistros]);
-
-  useEffect(() => {
-    loadEmployees();
-  }, []);
-
-  useEffect(() => {
-    if (tabValue === 1) {
-      filterRecords();
+  // Busca fluida de funcionários para navegação individual
+  const handleEmployeeSearchChange = useCallback((value: string) => {
+    setEmployeeSearchTerm(value);
+    
+    if (!value.trim()) {
+      setFilteredEmployees([]);
+      setShowEmployeeSuggestions(false);
+      return;
     }
-  }, [records, searchTerm, selectedEmployee, dateFrom, dateTo, tabValue]);
 
+    const filtered = employees.filter(emp =>
+      emp.nome.toLowerCase().includes(value.toLowerCase())
+    );
+    setFilteredEmployees(filtered.slice(0, 8));
+    setShowEmployeeSuggestions(true);
+  }, [employees]);
+
+  // Navegação para página individual do funcionário
+  const handleEmployeeSelect = (employee: Employee) => {
+    setEmployeeSearchTerm('');
+    setShowEmployeeSuggestions(false);
+    navigate(`/records/employee/${employee.id}/${encodeURIComponent(employee.nome)}`);
+  };
+
+  // Navegação via clique na tabela de resumo
+  const handleClickFuncionario = (summary: EmployeeSummary) => {
+    if (summary && summary.funcionario_id) {
+      const funcionarioNome = summary.funcionario || summary.funcionario_nome || 'Funcionário';
+      navigate(`/records/employee/${summary.funcionario_id}/${encodeURIComponent(funcionarioNome)}`);
+    } else {
+      showSnackbar('ID do funcionário não encontrado', 'error');
+    }
+  };
+
+  // Carregar funcionários
   const loadEmployees = async () => {
     try {
       const response = await apiService.getEmployees();
       const employeesList = response.funcionarios || [];
-      setEmployees(employeesList.sort((a, b) => a.nome.localeCompare(b.nome)));
+      setEmployees(employeesList.sort((a: Employee, b: Employee) => a.nome.localeCompare(b.nome)));
     } catch (err) {
       console.error('Error loading employees:', err);
     }
   };
 
-  const filterRecords = () => {
-    let filtered = [...records];
-
-    if (searchTerm.trim()) {
-      filtered = filtered.filter(record =>
-        record.funcionario_nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.registro_id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (selectedEmployee) {
-      filtered = filtered.filter(record => record.funcionario_id === selectedEmployee);
-    }
-
-    if (dateFrom) {
-      filtered = filtered.filter(record => record.data_hora >= dateFrom);
-    }
-
-    if (dateTo) {
-      filtered = filtered.filter(record => record.data_hora <= dateTo + ' 23:59:59');
-    }
-
-    setFilteredRecords(filtered);
-  };
-
+  // Criar registro manual
   const handleCreateRecord = async (data: {
     funcionario_id: string;
     data_hora: string;
@@ -215,6 +209,7 @@ const RecordsPage: React.FC = () => {
     }
   };
 
+  // Excluir registro
   const handleDeleteRecord = async () => {
     if (!recordToDelete) return;
 
@@ -233,6 +228,7 @@ const RecordsPage: React.FC = () => {
     }
   };
 
+  // Exportar para Excel
   const exportToExcel = () => {
     try {
       const wb = XLSX.utils.book_new();
@@ -254,10 +250,7 @@ const RecordsPage: React.FC = () => {
         });
         
         const ws = XLSX.utils.aoa_to_sheet(wsData);
-        ws['!cols'] = [
-          { wch: 30 },
-          { wch: 20 }
-        ];
+        ws['!cols'] = [{ wch: 30 }, { wch: 20 }];
         XLSX.utils.book_append_sheet(wb, ws, "Horas Trabalhadas");
         
         const fileName = `Horas_Trabalhadas_${dateFrom ? dateFrom.split('-').reverse().join('-') : 'inicio'}_a_${dateTo ? dateTo.split('-').reverse().join('-') : 'fim'}.xlsx`;
@@ -284,13 +277,7 @@ const RecordsPage: React.FC = () => {
         });
         
         const ws = XLSX.utils.aoa_to_sheet(wsData);
-        ws['!cols'] = [
-          { wch: 30 },
-          { wch: 15 },
-          { wch: 15 },
-          { wch: 15 },
-          { wch: 20 }
-        ];
+        ws['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }];
         XLSX.utils.book_append_sheet(wb, ws, "Registros Detalhados");
         
         const fileName = `Registros_Detalhados_${dateFrom ? dateFrom.split('-').reverse().join('-') : 'inicio'}_a_${dateTo ? dateTo.split('-').reverse().join('-') : 'fim'}.xlsx`;
@@ -303,6 +290,7 @@ const RecordsPage: React.FC = () => {
     }
   };
 
+  // Funções auxiliares
   const showSnackbar = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
@@ -357,34 +345,76 @@ const RecordsPage: React.FC = () => {
     return tipo === 'entrada' ? 'Entrada' : 'Saída';
   };
 
-  const handleClickFuncionario = (summary: EmployeeSummary) => {
-    if (summary && summary.funcionario_id) {
-      // Buscar nome do funcionário e definir no campo de busca
-      const funcionarioNome = summary.funcionario || summary.funcionario_nome || '';
-      setSearchTerm(funcionarioNome);
-      setTabValue(1); // Mudar para aba detalhada
-    } else {
-      showSnackbar('ID do funcionário não encontrado', 'error');
-    }
-  };
-
   const clearFilters = () => {
     setSearchTerm('');
     setDateFrom('');
     setDateTo('');
     setNome('');
-    setSelectedEmployee('');
+    setSelectedEmployeeFilter('');
   };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
+  // Effects
+  useEffect(() => {
+    // Apply filters from URL params (when coming from dashboard)
+    const dateParam = searchParams.get('date');
+    const tabParam = searchParams.get('tab');
+    
+    if (dateParam) {
+      setDateFrom(dateParam);
+      setDateTo(dateParam);
+      setTabValue(1); // Switch to detailed records tab
+    }
+    
+    if (tabParam === 'detailed') {
+      setTabValue(1); // Switch to detailed records tab without date filter
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    buscarRegistros();
+  }, [buscarRegistros]);
+
+  useEffect(() => {
+    loadEmployees();
+  }, []);
+
+  useEffect(() => {
+    if (tabValue === 1) {
+      // Filtrar registros para aba detalhada
+      let filtered = [...records];
+
+      if (searchTerm.trim()) {
+        filtered = filtered.filter(record =>
+          record.funcionario_nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          record.registro_id.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+
+      if (selectedEmployeeFilter) {
+        filtered = filtered.filter(record => record.funcionario_id === selectedEmployeeFilter);
+      }
+
+      if (dateFrom) {
+        filtered = filtered.filter(record => record.data_hora >= dateFrom);
+      }
+
+      if (dateTo) {
+        filtered = filtered.filter(record => record.data_hora <= dateTo + ' 23:59:59');
+      }
+
+      setFilteredRecords(filtered);
+    }
+  }, [records, searchTerm, selectedEmployeeFilter, dateFrom, dateTo, tabValue]);
+
   if (loading) {
     return (
       <PageLayout>
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-          <CircularProgress />
+          <CircularProgress sx={{ color: 'white' }} />
         </Box>
       </PageLayout>
     );
@@ -392,210 +422,190 @@ const RecordsPage: React.FC = () => {
 
   return (
     <PageLayout>
-      <Box className="space-y-6">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-      >
-        <Box>
-          <Typography variant="h4" className="font-bold text-gray-800 mb-2">
-            Registros de Ponto
-          </Typography>
-          <Typography variant="body1" className="text-gray-600">
-            Visualize e gerencie os registros de ponto dos funcionários
-          </Typography>
-        </Box>
-        <Box className="flex gap-2">
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' },
+        alignItems: { sm: 'center' },
+        justifyContent: 'space-between',
+        gap: 2,
+        mb: 4
+      }}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Box>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: 600, 
+                color: 'white', 
+                mb: 1,
+                fontSize: '28px'
+              }}
+            >
+              Registros de Ponto
+            </Typography>
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                color: 'rgba(255, 255, 255, 0.8)',
+                fontSize: '16px'
+              }}
+            >
+              Visualize e gerencie os registros de ponto dos funcionários
+            </Typography>
+          </Box>
+        </motion.div>
+        
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
             startIcon={<FileDownloadIcon />}
             onClick={exportToExcel}
             disabled={(tabValue === 0 ? employeeSummaries.length : filteredRecords.length) === 0 || loading}
-            className="border-green-600 text-green-600 hover:bg-green-50"
+            sx={{
+              borderColor: 'rgba(255, 255, 255, 0.3)',
+              color: 'rgba(255, 255, 255, 0.8)',
+              '&:hover': {
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              }
+            }}
           >
             Exportar Excel
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<GetAppIcon />}
-            onClick={exportToExcel}
-            className="border-blue-600 text-blue-600 hover:bg-blue-50"
-          >
-            Exportar
           </Button>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => setFormOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700"
+            sx={{
+              background: '#3b82f6',
+              '&:hover': {
+                background: '#2563eb',
+              },
+              fontWeight: 600,
+              textTransform: 'none',
+            }}
           >
             Registro Manual
           </Button>
         </Box>
-      </motion.div>
+      </Box>
 
       {error && (
-        <Alert severity="error" className="mb-4">
+        <Alert 
+          severity="error" 
+          sx={{ 
+            mb: 4,
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+        >
           {error}
         </Alert>
       )}
 
+      {/* Busca por funcionário individual */}
+      <EmployeeSearch
+        employeeSearchTerm={employeeSearchTerm}
+        onEmployeeSearchChange={handleEmployeeSearchChange}
+        showEmployeeSuggestions={showEmployeeSuggestions}
+        filteredEmployees={filteredEmployees}
+        onEmployeeSelect={handleEmployeeSelect}
+        onClearSearch={() => {
+          setEmployeeSearchTerm('');
+          setShowEmployeeSuggestions(false);
+        }}
+        onFocus={() => {
+          if (employeeSearchTerm && filteredEmployees.length > 0) {
+            setShowEmployeeSuggestions(true);
+          }
+        }}
+        onBlur={() => {
+          setTimeout(() => setShowEmployeeSuggestions(false), 200);
+        }}
+      />
+
       {/* Tabs */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        <Card>
-          <CardContent>
-            <Tabs value={tabValue} onChange={handleTabChange} className="mb-4">
-              <Tab label="Resumo por Funcionário" />
-              <Tab label="Registros Detalhados" />
-            </Tabs>
-          </CardContent>
-        </Card>
-      </motion.div>
+      <RecordsTabs
+        tabValue={tabValue}
+        onTabChange={handleTabChange}
+      />
 
-      {/* Filters */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        <Card>
-          <CardContent>
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 4 }}>
-                {tabValue === 0 ? (
-                  <Autocomplete
-                    freeSolo
-                    options={opcoesNomes}
-                    value={nome}
-                    onInputChange={(event, value) => {
-                      setNome(value || '');
-                      if (value && value.length > 0) {
-                        buscarNomes(value);
-                      }
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        fullWidth
-                        placeholder="Buscar por funcionário..."
-                        InputProps={{
-                          ...params.InputProps,
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <SearchIcon className="text-gray-400" />
-                            </InputAdornment>
-                          ),
-                        }}
-                        variant="outlined"
-                      />
-                    )}
-                  />
-                ) : (
-                  <TextField
-                    fullWidth
-                    placeholder="Buscar por funcionário ou ID..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon className="text-gray-400" />
-                        </InputAdornment>
-                      ),
-                    }}
-                    variant="outlined"
-                  />
-                )}
-              </Grid>
-              
-              <Grid size={{ xs: 12, md: 3 }}>
-                <FormControl fullWidth>
-                  <InputLabel>Funcionário</InputLabel>
-                  <Select
-                    value={selectedEmployee}
-                    onChange={(e) => setSelectedEmployee(e.target.value)}
-                    label="Funcionário"
-                  >
-                    <MenuItem value="">Todos</MenuItem>
-                    {employees.map((employee) => (
-                      <MenuItem key={employee.id} value={employee.id}>
-                        {employee.nome}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              
-              <Grid size={{ xs: 12, md: 2 }}>
-                <TextField
-                  fullWidth
-                  label="Data Início"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  variant="outlined"
-                  inputProps={{ max: dateTo || undefined }}
-                />
-              </Grid>
-              
-              <Grid size={{ xs: 12, md: 2 }}>
-                <TextField
-                  fullWidth
-                  label="Data Fim"
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  variant="outlined"
-                  inputProps={{ min: dateFrom || undefined }}
-                />
-              </Grid>
-              
-              <Grid size={{ xs: 12, md: 1 }}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={clearFilters}
-                  startIcon={<FilterListIcon />}
-                  className="h-full"
-                >
-                  Limpar
-                </Button>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-      </motion.div>
+      {/* Filtros */}
+      <RecordsFilters
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        onClearFilters={clearFilters}
+        nome={nome}
+        onNomeChange={setNome}
+        opcoesNomes={opcoesNomes}
+        onBuscarNomes={buscarNomes}
+        searchTerm={searchTerm}
+        onSearchTermChange={setSearchTerm}
+        selectedEmployeeFilter={selectedEmployeeFilter}
+        onSelectedEmployeeFilterChange={setSelectedEmployeeFilter}
+        employees={employees}
+        tabValue={tabValue}
+      />
 
-      {/* Content based on tab */}
+      {/* Conteúdo principal */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-        <Card>
+        <Card 
+          sx={{
+            background: 'rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+        >
           <CardContent>
             {tabValue === 0 ? (
               // Resumo por funcionário
               <>
-                <Typography variant="h6" className="font-semibold mb-4">
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    fontWeight: 600, 
+                    mb: 3,
+                    color: 'white',
+                    fontSize: '18px'
+                  }}
+                >
                   Resumo por Funcionário ({employeeSummaries.length})
                 </Typography>
                 
-                <TableContainer component={Paper} variant="outlined">
+                <TableContainer 
+                  component={Paper} 
+                  variant="outlined"
+                  sx={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(10px)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                >
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Funcionário</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Horas Trabalhadas</TableCell>
+                        <TableCell sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+                          Funcionário
+                        </TableCell>
+                        <TableCell sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+                          Horas Trabalhadas
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -605,27 +615,34 @@ const RecordsPage: React.FC = () => {
                             <TableCell
                               sx={{ 
                                 cursor: 'pointer', 
-                                color: '#0288d1',
-                                '&:hover': { textDecoration: 'underline' }
+                                color: '#3b82f6',
+                                '&:hover': { 
+                                  textDecoration: 'underline',
+                                  color: '#60a5fa'
+                                }
                               }}
                               onClick={() => handleClickFuncionario(summary)}
                             >
                               {summary.funcionario || summary.funcionario_nome || 'Desconhecido'}
                             </TableCell>
-                            <TableCell>
+                            <TableCell sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
                               {String(summary.horas_trabalhadas ?? summary.total_horas ?? 'N/A')}
                             </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={2} align="center">
-                            <Box className="py-8">
-                              <AccessTimeIcon className="text-gray-400 text-6xl mb-4" />
-                              <Typography variant="h6" className="text-gray-500 mb-2">
-                                Nenhum registro encontrado
+                          <TableCell 
+                            colSpan={2} 
+                            align="center"
+                            sx={{ color: 'rgba(255, 255, 255, 0.6)' }}
+                          >
+                            <Box sx={{ py: 8 }}>
+                              <AccessTimeIcon sx={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '4rem', mb: 2 }} />
+                              <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 1 }}>
+                                Nenhum resumo encontrado
                               </Typography>
-                              <Typography variant="body2" className="text-gray-400">
+                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
                                 {nome || dateFrom || dateTo 
                                   ? 'Nenhum registro encontrado com os filtros aplicados' 
                                   : 'Ajuste os filtros ou registre o primeiro ponto'}
@@ -641,19 +658,46 @@ const RecordsPage: React.FC = () => {
             ) : (
               // Registros detalhados
               <>
-                <Typography variant="h6" className="font-semibold mb-4">
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    fontWeight: 600, 
+                    mb: 3,
+                    color: 'white',
+                    fontSize: '18px'
+                  }}
+                >
                   Registros Detalhados ({filteredRecords.length})
                 </Typography>
                 
-                <TableContainer component={Paper} variant="outlined">
+                <TableContainer 
+                  component={Paper} 
+                  variant="outlined"
+                  sx={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(10px)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                >
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Funcionário</TableCell>
-                        <TableCell>Data</TableCell>
-                        <TableCell>Hora</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell align="center">Ações</TableCell>
+                        <TableCell sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+                          Funcionário
+                        </TableCell>
+                        <TableCell sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+                          Data
+                        </TableCell>
+                        <TableCell sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+                          Hora
+                        </TableCell>
+                        <TableCell sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+                          Status
+                        </TableCell>
+                        <TableCell align="center" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+                          Ações
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -664,21 +708,21 @@ const RecordsPage: React.FC = () => {
                             <TableRow key={record.registro_id || `record-${index}`} hover>
                               <TableCell>
                                 <Box>
-                                  <Typography variant="body2" className="font-medium">
+                                  <Typography variant="body2" sx={{ color: 'white', fontWeight: 500 }}>
                                     {record.funcionario_nome || record.funcionario_id || 'N/A'}
                                   </Typography>
-                                  <Typography variant="caption" className="text-gray-500">
+                                  <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
                                     ID: {record.registro_id?.slice(0, 8) || record.funcionario_id?.slice(0, 8) || 'N/A'}...
                                   </Typography>
                                 </Box>
                               </TableCell>
                               <TableCell>
-                                <Typography variant="body2">
+                                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
                                   {date}
                                 </Typography>
                               </TableCell>
                               <TableCell>
-                                <Typography variant="body2">
+                                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
                                   {time}
                                 </Typography>
                               </TableCell>
@@ -700,7 +744,12 @@ const RecordsPage: React.FC = () => {
                                     }
                                   }}
                                   size="small"
-                                  className="text-red-600 hover:bg-red-50"
+                                  sx={{
+                                    color: '#ef4444',
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                    }
+                                  }}
                                   disabled={!record.registro_id}
                                 >
                                   <DeleteIcon />
@@ -712,12 +761,12 @@ const RecordsPage: React.FC = () => {
                       ) : (
                         <TableRow>
                           <TableCell colSpan={5} align="center">
-                            <Box className="py-8">
-                              <AccessTimeIcon className="text-gray-400 text-6xl mb-4" />
-                              <Typography variant="h6" className="text-gray-500 mb-2">
+                            <Box sx={{ py: 8 }}>
+                              <AccessTimeIcon sx={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '4rem', mb: 2 }} />
+                              <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 1 }}>
                                 Nenhum registro encontrado
                               </Typography>
-                              <Typography variant="body2" className="text-gray-400">
+                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
                                 Ajuste os filtros ou registre o primeiro ponto
                               </Typography>
                             </Box>
@@ -747,19 +796,25 @@ const RecordsPage: React.FC = () => {
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
         PaperProps={{
-          sx: { borderRadius: 2 }
+          sx: { 
+            borderRadius: 2,
+            background: 'rgba(30, 41, 138, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            color: 'white'
+          }
         }}
       >
         <DialogTitle>
-          <Typography variant="h6" className="font-semibold">
+          <Typography variant="h6" sx={{ fontWeight: 600, color: 'white' }}>
             Confirmar Exclusão
           </Typography>
         </DialogTitle>
         <DialogContent>
-          <Typography>
+          <Typography sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
             Tem certeza que deseja excluir este registro de ponto?
           </Typography>
-          <Typography variant="body2" className="text-red-600 mt-2">
+          <Typography variant="body2" sx={{ color: '#ef4444', mt: 2 }}>
             Esta ação não pode ser desfeita.
           </Typography>
         </DialogContent>
@@ -767,7 +822,12 @@ const RecordsPage: React.FC = () => {
           <Button
             onClick={() => setDeleteDialogOpen(false)}
             disabled={submitting}
-            className="text-gray-600"
+            sx={{ 
+              color: 'rgba(255, 255, 255, 0.7)',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              }
+            }}
           >
             Cancelar
           </Button>
@@ -777,6 +837,12 @@ const RecordsPage: React.FC = () => {
             variant="contained"
             disabled={submitting}
             startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : <DeleteIcon />}
+            sx={{
+              backgroundColor: '#ef4444',
+              '&:hover': {
+                backgroundColor: '#dc2626',
+              }
+            }}
           >
             {submitting ? 'Excluindo...' : 'Excluir'}
           </Button>
@@ -798,7 +864,6 @@ const RecordsPage: React.FC = () => {
           {snackbarMessage}
         </Alert>
       </Snackbar>
-    </Box>
     </PageLayout>
   );
 };

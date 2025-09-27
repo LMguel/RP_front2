@@ -81,45 +81,98 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   const drawer = (
-    <Box className="h-full bg-white">
-      <Box className="p-6">
-        <Box className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-            <BusinessIcon className="text-white" />
-          </div>
+    <Box 
+      sx={{
+        height: '100%',
+        background: 'rgba(255, 255, 255, 0.08)',
+        backdropFilter: 'blur(20px)',
+        borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+      }}
+    >
+      <Box sx={{ p: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              backgroundColor: 'white',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden'
+            }}
+          >
+            <img 
+              src="/src/image/logo.png" 
+              alt="RP Logo"
+              style={{
+                width: '200%',
+                height: '200%',
+                objectFit: 'contain',
+              }}
+            />
+          </Box>
           <Box>
-            <Typography variant="h6" className="font-bold text-gray-800">
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 600, 
+                color: 'white',
+                fontSize: '16px'
+              }}
+            >
               REGISTRA.PONTO
             </Typography>
-            <Typography variant="caption" className="text-gray-500">
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontSize: '12px'
+              }}
+            >
               Sistema de Ponto
             </Typography>
           </Box>
         </Box>
         
-        <Divider className="mb-4" />
+        <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)', mb: 3 }} />
         
         <List>
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
-              <ListItem key={item.text} disablePadding className="mb-1">
+              <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
                 <ListItemButton
                   onClick={() => handleNavigation(item.path)}
-                  className={`rounded-lg mx-2 ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600'
-                      : 'text-gray-600 hover:bg-gray-50'
-                  }`}
+                  sx={{
+                    borderRadius: '8px',
+                    mx: 1,
+                    color: isActive ? 'white' : 'rgba(255, 255, 255, 0.7)',
+                    background: isActive ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                    '&:hover': {
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      color: 'white',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
                 >
                   <ListItemIcon
-                    className={isActive ? 'text-blue-600' : 'text-gray-500'}
+                    sx={{
+                      color: isActive ? 'white' : 'rgba(255, 255, 255, 0.7)',
+                      minWidth: 40,
+                    }}
                   >
                     {item.icon}
                   </ListItemIcon>
                   <ListItemText
                     primary={item.text}
-                    className={isActive ? 'font-medium' : ''}
+                    sx={{
+                      '& .MuiListItemText-primary': {
+                        fontWeight: isActive ? 500 : 400,
+                        fontSize: '14px'
+                      }
+                    }}
                   />
                 </ListItemButton>
               </ListItem>
@@ -131,15 +184,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   );
 
   return (
-    <Box className="flex h-screen bg-gray-50">
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        height: '100vh', 
+        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%)'
+      }}
+    >
       <AppBar
         position="fixed"
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: `${drawerWidth}px` },
-          backgroundColor: 'white',
-          color: 'text.primary',
-          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
+          background: 'rgba(255, 255, 255, 0.08)',
+          backdropFilter: 'blur(20px)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         }}
       >
         <Toolbar>
@@ -148,21 +208,47 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { md: 'none' } }}
+            sx={{ 
+              mr: 2, 
+              display: { md: 'none' },
+              color: 'white'
+            }}
           >
             <MenuIcon />
           </IconButton>
           
-          <Typography variant="h6" noWrap component="div" className="flex-1">
+          <Typography 
+            variant="h6" 
+            noWrap 
+            component="div" 
+            sx={{ 
+              flexGrow: 1,
+              color: 'white',
+              fontWeight: 500
+            }}
+          >
             {menuItems.find(item => item.path === location.pathname)?.text || 'Dashboard'}
           </Typography>
           
-          <Box className="flex items-center gap-4">
-            <Box className="text-right hidden sm:block">
-              <Typography variant="body2" className="font-medium text-gray-800">
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  fontWeight: 500, 
+                  color: 'white',
+                  fontSize: '14px'
+                }}
+              >
                 {user?.empresa_nome}
               </Typography>
-              <Typography variant="caption" className="text-gray-500">
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  fontSize: '12px'
+                }}
+              >
                 {user?.usuario_id}
               </Typography>
             </Box>
@@ -174,10 +260,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               aria-controls="primary-search-account-menu"
               aria-haspopup="true"
               onClick={handleProfileMenuOpen}
-              color="inherit"
+              sx={{ color: 'white' }}
             >
-              <Avatar className="w-8 h-8 bg-blue-600">
-                <AccountCircleIcon />
+              <Avatar 
+                sx={{ 
+                  width: 32, 
+                  height: 32, 
+                  background: 'rgba(255, 255, 255, 0.2)' 
+                }}
+              >
+                <AccountCircleIcon sx={{ color: 'white' }} />
               </Avatar>
             </IconButton>
           </Box>
@@ -200,6 +292,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
+              background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%)',
             },
           }}
         >
@@ -212,6 +305,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
+              background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%)',
             },
           }}
           open
@@ -233,22 +327,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           sx={{
             minHeight: 'calc(100vh - 64px)',
             width: '100%',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%)',
             position: 'relative',
             overflow: 'auto',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundImage: `url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><pattern id='grain' width='100' height='100' patternUnits='userSpaceOnUse'><circle cx='25' cy='25' r='1' fill='white' opacity='0.06'/><circle cx='75' cy='75' r='0.5' fill='white' opacity='0.04'/><circle cx='50' cy='10' r='0.8' fill='white' opacity='0.03'/></pattern></defs><rect width='100%25' height='100%25' fill='url(%23grain)'/></svg>")`,
-              pointerEvents: 'none',
-            }
           }}
         >
-          <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1, py: 4, px: { xs: 2, md: 6 } }}>
+          <Container 
+            maxWidth="lg" 
+            sx={{ 
+              position: 'relative', 
+              zIndex: 1, 
+              py: 4, 
+              px: { xs: 2, md: 6 } 
+            }}
+          >
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}
@@ -273,7 +365,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           elevation: 0,
           sx: {
             overflow: 'visible',
-            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
             mt: 1.5,
             '& .MuiAvatar-root': {
               width: 32,
@@ -289,7 +385,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               right: 14,
               width: 10,
               height: 10,
-              bgcolor: 'background.paper',
+              bgcolor: 'rgba(255, 255, 255, 0.95)',
               transform: 'translateY(-50%) rotate(45deg)',
               zIndex: 0,
             },
@@ -298,15 +394,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        <MenuItem onClick={() => navigate('/profile')}>
+        <MenuItem 
+          onClick={() => navigate('/profile')}
+          sx={{ color: '#374151', '&:hover': { background: 'rgba(0, 0, 0, 0.04)' } }}
+        >
           <ListItemIcon>
-            <AccountCircleIcon fontSize="small" />
+            <AccountCircleIcon fontSize="small" sx={{ color: '#6b7280' }} />
           </ListItemIcon>
           Perfil
         </MenuItem>
-        <MenuItem onClick={handleLogout}>
+        <MenuItem 
+          onClick={handleLogout}
+          sx={{ color: '#374151', '&:hover': { background: 'rgba(0, 0, 0, 0.04)' } }}
+        >
           <ListItemIcon>
-            <LogoutIcon fontSize="small" />
+            <LogoutIcon fontSize="small" sx={{ color: '#6b7280' }} />
           </ListItemIcon>
           Sair
         </MenuItem>

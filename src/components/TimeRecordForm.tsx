@@ -14,7 +14,6 @@ import {
   Select,
   MenuItem,
   CircularProgress,
-  Alert,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -54,16 +53,16 @@ const TimeRecordForm: React.FC<TimeRecordFormProps> = ({
 
   useEffect(() => {
     if (open) {
-      // Use prop employees if available, otherwise load them
       if (propEmployees.length > 0) {
         setEmployees(propEmployees.sort((a, b) => a.nome.localeCompare(b.nome)));
       } else {
         loadEmployees();
       }
       
-      // Set current date and time
       const now = new Date();
-      const formattedDateTime = now.toISOString().slice(0, 16);
+      // Get current time in Brazil timezone
+      const brasiliaTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+      const formattedDateTime = brasiliaTime.toISOString().slice(0, 16);
       setFormData(prev => ({
         ...prev,
         data_hora: formattedDateTime,
@@ -76,7 +75,11 @@ const TimeRecordForm: React.FC<TimeRecordFormProps> = ({
       setLoadingEmployees(true);
       const response = await apiService.getEmployees();
       const employeesList = response.funcionarios || [];
-      setEmployees(employeesList.sort((a, b) => a.nome.localeCompare(b.nome)));
+      interface SortableEmployee {
+        nome: string;
+        [key: string]: any;
+      }
+      setEmployees(employeesList.sort((a: SortableEmployee, b: SortableEmployee) => a.nome.localeCompare(b.nome)));
     } catch (err) {
       console.error('Error loading employees:', err);
     } finally {
@@ -140,8 +143,10 @@ const TimeRecordForm: React.FC<TimeRecordFormProps> = ({
       return;
     }
 
-    // Format datetime for API
-    const formattedDateTime = new Date(formData.data_hora).toISOString().slice(0, 19).replace('T', ' ');
+    // Convert to proper format for database, keeping the user's selected time
+    // No timezone conversion here since user already selected the local time
+    const selectedDate = new Date(formData.data_hora);
+    const formattedDateTime = selectedDate.toISOString().slice(0, 19).replace('T', ' ');
     
     console.log('Submitting record with data:', {
       funcionario_id: formData.funcionario_id,
@@ -173,30 +178,87 @@ const TimeRecordForm: React.FC<TimeRecordFormProps> = ({
       maxWidth="sm"
       fullWidth
       PaperProps={{
-        sx: { borderRadius: 2 }
+        sx: {
+          background: 'rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+        }
+      }}
+      sx={{
+        '& .MuiDialog-container': {
+          background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%)',
+        }
       }}
     >
-      <DialogTitle className="flex items-center justify-between">
-        <Box className="flex items-center gap-2">
-          <AccessTimeIcon className="text-blue-600" />
-          <Typography variant="h6" className="font-semibold">
+      <DialogTitle 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          color: 'white',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          pb: 2
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <AccessTimeIcon sx={{ color: 'rgba(255, 255, 255, 0.9)' }} />
+          <Typography variant="h6" sx={{ fontWeight: 600, color: 'white' }}>
             Registrar Ponto Manual
           </Typography>
         </Box>
-        <IconButton onClick={handleClose} disabled={loading}>
+        <IconButton 
+          onClick={handleClose} 
+          disabled={loading}
+          sx={{ 
+            color: 'rgba(255, 255, 255, 0.7)',
+            '&:hover': {
+              color: 'white',
+              background: 'rgba(255, 255, 255, 0.1)'
+            }
+          }}
+        >
           <CloseIcon />
         </IconButton>
       </DialogTitle>
 
       <form onSubmit={handleSubmit}>
-        <DialogContent className="space-y-4">
+        <DialogContent sx={{ py: 4 }}>
           {loadingEmployees ? (
             <Box display="flex" justifyContent="center" py={4}>
-              <CircularProgress />
+              <CircularProgress sx={{ color: 'white' }} />
             </Box>
           ) : (
-            <>
-              <FormControl fullWidth error={!!errors.funcionario_id}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <FormControl 
+                fullWidth 
+                error={!!errors.funcionario_id}
+                sx={{
+                  '& .MuiInputLabel-root': {
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    '&.Mui-focused': {
+                      color: 'rgba(255, 255, 255, 0.9)'
+                    }
+                  },
+                  '& .MuiOutlinedInput-root': {
+                    color: 'white',
+                    '& fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.7)',
+                    },
+                    background: 'rgba(255, 255, 255, 0.05)',
+                  },
+                  '& .MuiSelect-icon': {
+                    color: 'rgba(255, 255, 255, 0.7)'
+                  }
+                }}
+              >
                 <InputLabel>Funcionário</InputLabel>
                 <Select
                   name="funcionario_id"
@@ -204,6 +266,17 @@ const TimeRecordForm: React.FC<TimeRecordFormProps> = ({
                   onChange={handleSelectChange}
                   label="Funcionário"
                   disabled={loading}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        backdropFilter: 'blur(20px)',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                      }
+                    }
+                  }}
                 >
                   {employees.map((employee) => (
                     <MenuItem key={employee.id} value={employee.id}>
@@ -212,7 +285,7 @@ const TimeRecordForm: React.FC<TimeRecordFormProps> = ({
                   ))}
                 </Select>
                 {errors.funcionario_id && (
-                  <Typography variant="caption" color="error" className="mt-1">
+                  <Typography variant="caption" sx={{ color: '#ef4444', mt: 1 }}>
                     {errors.funcionario_id}
                   </Typography>
                 )}
@@ -231,10 +304,61 @@ const TimeRecordForm: React.FC<TimeRecordFormProps> = ({
                 variant="outlined"
                 InputLabelProps={{
                   shrink: true,
+                  sx: {
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    '&.Mui-focused': {
+                      color: 'rgba(255, 255, 255, 0.9)'
+                    }
+                  }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    color: 'white',
+                    '& fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.7)',
+                    },
+                    background: 'rgba(255, 255, 255, 0.05)',
+                  },
+                  '& .MuiFormHelperText-root': {
+                    color: '#ef4444'
+                  }
                 }}
               />
 
-              <FormControl fullWidth error={!!errors.tipo}>
+              <FormControl 
+                fullWidth 
+                error={!!errors.tipo}
+                sx={{
+                  '& .MuiInputLabel-root': {
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    '&.Mui-focused': {
+                      color: 'rgba(255, 255, 255, 0.9)'
+                    }
+                  },
+                  '& .MuiOutlinedInput-root': {
+                    color: 'white',
+                    '& fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.7)',
+                    },
+                    background: 'rgba(255, 255, 255, 0.05)',
+                  },
+                  '& .MuiSelect-icon': {
+                    color: 'rgba(255, 255, 255, 0.7)'
+                  }
+                }}
+              >
                 <InputLabel>Tipo de Registro</InputLabel>
                 <Select
                   name="tipo"
@@ -242,25 +366,42 @@ const TimeRecordForm: React.FC<TimeRecordFormProps> = ({
                   onChange={handleSelectChange}
                   label="Tipo de Registro"
                   disabled={loading}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        backdropFilter: 'blur(20px)',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                      }
+                    }
+                  }}
                 >
                   <MenuItem value="entrada">Entrada</MenuItem>
                   <MenuItem value="saída">Saída</MenuItem>
                 </Select>
                 {errors.tipo && (
-                  <Typography variant="caption" color="error" className="mt-1">
+                  <Typography variant="caption" sx={{ color: '#ef4444', mt: 1 }}>
                     {errors.tipo}
                   </Typography>
                 )}
               </FormControl>
-            </>
+            </Box>
           )}
         </DialogContent>
 
-        <DialogActions className="p-6">
+        <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
           <Button
             onClick={handleClose}
             disabled={loading}
-            className="text-gray-600"
+            sx={{
+              color: 'rgba(255, 255, 255, 0.7)',
+              '&:hover': {
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: 'white'
+              }
+            }}
           >
             Cancelar
           </Button>
@@ -268,8 +409,19 @@ const TimeRecordForm: React.FC<TimeRecordFormProps> = ({
             type="submit"
             variant="contained"
             disabled={loading || loadingEmployees}
-            className="bg-blue-600 hover:bg-blue-700"
             startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AccessTimeIcon />}
+            sx={{ 
+              background: '#2563eb',
+              color: 'white',
+              fontWeight: 600,
+              px: 3,
+              '&:hover': {
+                background: '#1d4ed8',
+              },
+              '&:disabled': {
+                background: 'rgba(255, 255, 255, 0.1)',
+              }
+            }}
           >
             {loading ? 'Registrando...' : 'Registrar Ponto'}
           </Button>

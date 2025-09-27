@@ -13,6 +13,7 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import EmployeesPage from './pages/EmployeesPage';
 import RecordsPage from './pages/RecordsPage';
+import EmployeeRecordsPage from './pages/EmployeeRecordsPage';
 import SettingsPage from './pages/SettingsPage';
 
 // Create theme
@@ -174,6 +175,16 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <RecordsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/records/employee/:employeeId/:employeeName"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <EmployeeRecordsPage />
             </Layout>
           </ProtectedRoute>
         }

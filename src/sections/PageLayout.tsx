@@ -6,16 +6,12 @@ const PageLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     <Box
       sx={{
         minHeight: '100vh',
-        width: '100vw',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        width: '100%',
+        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%)',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
         position: 'relative',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
         overflow: 'auto',
         '&::before': {
           content: '""',
@@ -29,7 +25,18 @@ const PageLayout: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
         }
       }}
     >
-      <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1, py: 4 }}>
+      <Container 
+        maxWidth="xl" 
+        sx={{ 
+          position: 'relative', 
+          zIndex: 1, 
+          py: 4,
+          px: { xs: 2, sm: 3, md: 4 },
+          width: '100%',
+          maxWidth: '100%',
+          margin: '0 auto'
+        }}
+      >
         {children}
       </Container>
     </Box>
