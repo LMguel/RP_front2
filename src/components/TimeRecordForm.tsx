@@ -60,9 +60,14 @@ const TimeRecordForm: React.FC<TimeRecordFormProps> = ({
       }
       
       const now = new Date();
-      // Get current time in Brazil timezone
+      // Get current time in Brazil timezone and format for datetime-local input
       const brasiliaTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
-      const formattedDateTime = brasiliaTime.toISOString().slice(0, 16);
+      const year = brasiliaTime.getFullYear();
+      const month = String(brasiliaTime.getMonth() + 1).padStart(2, '0');
+      const day = String(brasiliaTime.getDate()).padStart(2, '0');
+      const hours = String(brasiliaTime.getHours()).padStart(2, '0');
+      const minutes = String(brasiliaTime.getMinutes()).padStart(2, '0');
+      const formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
       setFormData(prev => ({
         ...prev,
         data_hora: formattedDateTime,
@@ -144,15 +149,8 @@ const TimeRecordForm: React.FC<TimeRecordFormProps> = ({
     }
 
     // Convert to proper format for database, keeping the user's selected time
-    // No timezone conversion here since user already selected the local time
-    const selectedDate = new Date(formData.data_hora);
-    const formattedDateTime = selectedDate.toISOString().slice(0, 19).replace('T', ' ');
-    
-    console.log('Submitting record with data:', {
-      funcionario_id: formData.funcionario_id,
-      data_hora: formattedDateTime,
-      tipo: formData.tipo,
-    });
+    // Parse the datetime-local input directly without timezone conversion
+    const formattedDateTime = formData.data_hora.replace('T', ' ') + ':00';
     
     await onSubmit({
       funcionario_id: formData.funcionario_id,
