@@ -94,17 +94,116 @@ const DashboardPage: React.FC = () => {
       const employeesResponse = await apiService.getEmployees();
       const totalEmployees = employeesResponse.funcionarios?.length || 0;
 
-      // Load recent records
-      const recordsResponse = await apiService.getTimeRecords();
-      const records = Array.isArray(recordsResponse) ? recordsResponse : [];
+      // Load ALL records using the same strategy as RecordsPageDetails
+      console.log('🏠 Dashboard: Buscando TODOS os registros...');
+      let allRecords: any[] = [];
+      
+      try {
+        // Estratégia: Buscar todos os funcionários e depois seus registros individuais
+        const employeesList = employeesResponse.funcionarios || [];
+        console.log('👥 Dashboard: Funcionários encontrados:', employeesList.length);
+        
+        // Para cada funcionário, buscar TODOS os seus registros individuais
+        for (const employee of employeesList) {
+          try {
+            console.log(`📊 Dashboard: Buscando registros de: ${employee.nome}`);
+            
+            // Tentar diferentes parâmetros para buscar registros individuais
+            const strategies = [
+              { funcionario_id: employee.id, individual: true },
+              { funcionario_id: employee.id, detailed: true },
+              { funcionario_id: employee.id, type: 'individual' },
+              { funcionario_id: employee.id }
+            ];
+            
+            let employeeRecords = [];
+            
+            for (const params of strategies) {
+              try {
+                const response = await apiService.getTimeRecords(params);
+                
+                if (Array.isArray(response) && response.length > 0) {
+                  // Verificar se são registros individuais (têm data_hora, tipo, etc.)
+                  const hasIndividualData = response.some(record => 
+                    record.data_hora && record.tipo && (record.tipo === 'entrada' || record.tipo === 'saída')
+                  );
+                  
+                  if (hasIndividualData) {
+                    employeeRecords = response;
+                    console.log(`  ✅ Dashboard: Encontrados ${employeeRecords.length} registros individuais`);
+                    break;
+                  }
+                } else if (response && typeof response === 'object') {
+                  // Verificar propriedades do objeto que podem conter registros
+                  const possibleProps = ['registros', 'records', 'data', 'items', 'timeRecords', 'detalhes'];
+                  for (const prop of possibleProps) {
+                    if (Array.isArray(response[prop])) {
+                      const hasIndividualData = response[prop].some(record => 
+                        record.data_hora && record.tipo
+                      );
+                      if (hasIndividualData) {
+                        employeeRecords = response[prop];
+                        console.log(`  ✅ Dashboard: Encontrados registros em ${prop}:`, employeeRecords.length);
+                        break;
+                      }
+                    }
+                  }
+                  if (employeeRecords.length > 0) break;
+                }
+              } catch (strategyError) {
+                console.log(`  ❌ Dashboard: Erro com parâmetros ${JSON.stringify(params)}:`, strategyError);
+              }
+            }
+            
+            // Se encontrou registros, adicionar informações do funcionário e incluir na lista
+            if (employeeRecords.length > 0) {
+              const recordsWithEmployeeInfo = employeeRecords.map(record => ({
+                ...record,
+                funcionario_nome: record.funcionario_nome || employee.nome,
+                funcionario_id: record.funcionario_id || employee.id,
+                // Garantir que temos os campos necessários
+                registro_id: record.registro_id || record.id || `${employee.id}_${record.data_hora || new Date().getTime()}`,
+                tipo: record.tipo || 'entrada',
+                data_hora: record.data_hora || record.timestamp || record.datetime,
+                empresa_nome: record.empresa_nome || record.company || 'N/A'
+              }));
+              
+              allRecords = [...allRecords, ...recordsWithEmployeeInfo];
+              console.log(`✅ Dashboard: Adicionados ${recordsWithEmployeeInfo.length} registros de ${employee.nome}`);
+            }
+            
+          } catch (empErr) {
+            console.log(`❌ Dashboard: Erro geral ao buscar registros de ${employee.nome}:`, empErr);
+          }
+        }
+        
+        console.log('📊 Dashboard: Total de registros coletados:', allRecords.length);
+        
+        // Se não conseguimos encontrar registros individuais, tentar fallback
+        if (allRecords.length === 0) {
+          console.log('🔄 Dashboard: Fallback - buscando do endpoint padrão...');
+          const fallbackResponse = await apiService.getTimeRecords();
+          console.log('📊 Dashboard: Resposta fallback:', fallbackResponse);
+          
+          if (Array.isArray(fallbackResponse)) {
+            allRecords = fallbackResponse;
+          } else if (fallbackResponse && typeof fallbackResponse === 'object') {
+            Object.keys(fallbackResponse).forEach(key => {
+              if (Array.isArray(fallbackResponse[key])) {
+                console.log(`📊 Dashboard: Encontrado array em ${key}:`, fallbackResponse[key].length);
+                allRecords = [...allRecords, ...fallbackResponse[key]];
+              }
+            });
+          }
+        }
+        
+      } catch (fetchError) {
+        console.error('❌ Dashboard: Erro ao buscar registros individuais:', fetchError);
+      }
       
       // Get current date in Brazil timezone
       const now = new Date();
       const brasiliaTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
-      
-      // Also try getting today's date from a simple Date() for comparison
-      const simpleToday = new Date();
-      const simpleDateStr = simpleToday.toISOString().split('T')[0]; // Format: "2025-09-28"
       
       const currentYear = brasiliaTime.getFullYear();
       const currentMonth = brasiliaTime.getMonth() + 1; // getMonth() returns 0-11
@@ -112,9 +211,12 @@ const DashboardPage: React.FC = () => {
       
       const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
       const currentDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
+      
+      console.log('📅 Dashboard: Data atual para filtros:', { currentDateStr, currentMonthStr });
+      console.log('📋 Dashboard: Exemplos de registros para análise:', allRecords.slice(0, 3));
 
-      // Filtrar registros do mês atual
-      const monthlyRecords = records.filter(record => {
+      // Filtrar registros do mês atual - com conversão de formato
+      const monthlyRecords = allRecords.filter(record => {
         if (!record.data_hora) return false;
         
         let recordDate = '';
@@ -128,14 +230,37 @@ const DashboardPage: React.FC = () => {
           recordDate = record.data_hora;
         }
         
-        return recordDate && recordDate.startsWith(currentMonthStr);
+        // Converter diferentes formatos para YYYY-MM-DD
+        let normalizedDate = '';
+        if (recordDate.includes('/')) {
+          // Formato DD/MM/YYYY
+          const [day, month, year] = recordDate.split('/');
+          normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        } else if (recordDate.includes('-')) {
+          const dateParts = recordDate.split('-');
+          if (dateParts[0].length === 2) {
+            // Formato DD-MM-YYYY
+            const [day, month, year] = dateParts;
+            normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          } else {
+            // Já está em formato YYYY-MM-DD
+            normalizedDate = recordDate;
+          }
+        } else {
+          normalizedDate = recordDate;
+        }
+        
+        const isFromCurrentMonth = normalizedDate && normalizedDate.startsWith(currentMonthStr);
+        if (isFromCurrentMonth) {
+          console.log(`✅ Dashboard: Registro do mês: ${record.data_hora} -> ${normalizedDate}`);
+        }
+        
+        return isFromCurrentMonth;
       });
 
-      // Filtrar registros de hoje - só considera registros com data válida
-      const todayRecords = records.filter(record => {
-        if (!record.data_hora) {
-          return false;
-        }
+      // Filtrar registros de hoje - com conversão de formato
+      const todayRecords = allRecords.filter(record => {
+        if (!record.data_hora) return false;
         
         let recordDate = '';
         
@@ -147,15 +272,42 @@ const DashboardPage: React.FC = () => {
           recordDate = record.data_hora;
         }
         
-        const matchesBrasil = recordDate === currentDateStr;
-        const matchesSimple = recordDate === simpleDateStr;
+        // Converter diferentes formatos para YYYY-MM-DD
+        let normalizedDate = '';
+        if (recordDate.includes('/')) {
+          // Formato DD/MM/YYYY
+          const [day, month, year] = recordDate.split('/');
+          normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        } else if (recordDate.includes('-')) {
+          const dateParts = recordDate.split('-');
+          if (dateParts[0].length === 2) {
+            // Formato DD-MM-YYYY
+            const [day, month, year] = dateParts;
+            normalizedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          } else {
+            // Já está em formato YYYY-MM-DD
+            normalizedDate = recordDate;
+          }
+        } else {
+          normalizedDate = recordDate;
+        }
         
-        return matchesBrasil || matchesSimple;
+        const isFromToday = normalizedDate === currentDateStr;
+        if (isFromToday) {
+          console.log(`✅ Dashboard: Registro de hoje: ${record.data_hora} -> ${normalizedDate}`);
+        }
+        
+        return isFromToday;
       });
       
+      console.log('📊 Dashboard: Registros do mês:', monthlyRecords.length);
+      console.log('📊 Dashboard: Registros de hoje:', todayRecords.length);
+      
       // Get unique employees who registered today
-      const uniqueEmployeeIds = [...new Set(todayRecords.map(record => record.funcionario_id || record.funcionario_nome))].filter(id => id);
+      const uniqueEmployeeIds = [...new Set(todayRecords.map(record => record.funcionario_id))].filter(id => id);
       const uniqueEmployeesToday = uniqueEmployeeIds.length;
+      
+      console.log('👤 Dashboard: Funcionários únicos que registraram hoje:', uniqueEmployeesToday);
 
       setStats({
         total_funcionarios: totalEmployees,
@@ -172,7 +324,16 @@ const DashboardPage: React.FC = () => {
   };
 
   const handleNavigateToTodayRecords = () => {
-    navigate('/records?tab=detailed');
+    // Obter data atual no formato YYYY-MM-DD
+    const now = new Date();
+    const brasiliaTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+    const currentYear = brasiliaTime.getFullYear();
+    const currentMonth = brasiliaTime.getMonth() + 1;
+    const currentDay = brasiliaTime.getDate();
+    const todayStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
+    
+    // Navegar para registros detalhados com filtro de data para hoje
+    navigate(`/records/detailed?dateFrom=${todayStr}&dateTo=${todayStr}`);
   };
 
   const handleNavigateToEmployees = () => {

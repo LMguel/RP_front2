@@ -85,7 +85,7 @@ const RecordsFilters: React.FC<RecordsFiltersProps> = ({
             {/* Filtros para vista individual */}
             {isIndividualView ? (
               <>
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                   <TextField
                     fullWidth
                     label="Data Início"
@@ -120,7 +120,7 @@ const RecordsFilters: React.FC<RecordsFiltersProps> = ({
                   />
                 </Grid>
                 
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                   <TextField
                     fullWidth
                     label="Data Fim"
@@ -155,7 +155,7 @@ const RecordsFilters: React.FC<RecordsFiltersProps> = ({
                   />
                 </Grid>
                 
-                <Grid item xs={12} md={2}>
+                <Grid size={{ xs: 12, md: 2 }}>
                   <IconButton
                     onClick={onClearFilters}
                     sx={{
@@ -176,7 +176,7 @@ const RecordsFilters: React.FC<RecordsFiltersProps> = ({
             ) : (
               <>
                 {/* Filtros para vista geral */}
-                <Grid xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                   {tabValue === 0 ? (
                     <Autocomplete
                       freeSolo
@@ -266,7 +266,7 @@ const RecordsFilters: React.FC<RecordsFiltersProps> = ({
                 </Grid>
                 
                 {tabValue === 1 && (
-                  <Grid item xs={12} md={3}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <FormControl 
                       fullWidth 
                       variant="outlined"
@@ -314,7 +314,7 @@ const RecordsFilters: React.FC<RecordsFiltersProps> = ({
                   </Grid>
                 )}
                 
-                <Grid xs={12} md={2}>
+                <Grid size={{ xs: 12, md: 2 }}>
                   <TextField
                     fullWidth
                     label="Data Início"
@@ -350,7 +350,7 @@ const RecordsFilters: React.FC<RecordsFiltersProps> = ({
                   />
                 </Grid>
                 
-                <Grid xs={12} md={2}>
+                <Grid size={{ xs: 12, md: 2 }}>
                   <TextField
                     fullWidth
                     label="Data Fim"
@@ -386,7 +386,7 @@ const RecordsFilters: React.FC<RecordsFiltersProps> = ({
                   />
                 </Grid>
                 
-                <Grid item xs={12} md={1}>
+                <Grid size={{ xs: 12, md: 1 }}>
                   <IconButton
                     onClick={onClearFilters}
                     sx={{

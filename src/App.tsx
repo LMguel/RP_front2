@@ -13,6 +13,7 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import EmployeesPage from './pages/EmployeesPage';
 import RecordsPage from './pages/RecordsPage';
+import RecordsPageDetails from './pages/RecordsPageDetails';
 import EmployeeRecordsPage from './pages/EmployeeRecordsPage';
 import SettingsPage from './pages/SettingsPage';
 
@@ -175,6 +176,16 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <RecordsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/records/detailed"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <RecordsPageDetails />
             </Layout>
           </ProtectedRoute>
         }
